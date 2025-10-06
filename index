@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parametric Part Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        #renderer-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        /* Simple toggle switch style */
+        .toggle-checkbox:checked { right: 0; border-color: #48bb78; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #48bb78; }
+        /* Unit switcher style */
+        .unit-toggle-label { cursor: pointer; padding: 0.25rem 0.75rem; border-radius: 0.375rem; transition: background-color 0.2s; }
+        .unit-toggle-input:checked + .unit-toggle-label { background-color: #06b6d4; color: white; }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-800 text-white overflow-hidden h-screen">
+
+    <div class="flex flex-col md:flex-row h-full">
+        <!-- Sidebar Controls -->
+        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 p-6 overflow-y-auto flex-shrink-0 md:h-auto h-1/2">
+            <h1 class="text-2xl font-bold text-cyan-400 mb-2">Parametric Part Creator</h1>
+
+            <!-- Unit System -->
+             <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-400 mb-2">Unit System</label>
+                <div class="flex bg-gray-700 rounded-lg p-1">
+                    <input type="radio" name="unit" id="unit-mm" value="mm" class="hidden unit-toggle-input" checked>
+                    <label for="unit-mm" class="unit-toggle-label w-1/2 text-center">Millimeters (mm)</label>
+                    <input type="radio" name="unit" id="unit-in" value="in" class="hidden unit-toggle-input">
+                    <label for="unit-in" class="unit-toggle-label w-1/2 text-center">Inches (in)</label>
+                </div>
+            </div>
+
+            <!-- Part Selector -->
+            <div class="mb-6">
+                <label for="part-selector" class="block text-sm font-medium text-gray-400 mb-2">Select Part Type</label>
+                <select id="part-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <option value="roller">Roller & Pulley</option>
+                    <option value="washer">Washer</option>
+                    <option value="box">Box / Enclosure</option>
+                    <option value="knob">Knob</option>
+                    <option value="funnel">Funnel</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Parameter Sections -->
+            <div id="params-container">
+                <!-- Roller Parameters -->
+                <div id="roller-params" class="space-y-4">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Roller & Pulley Parameters</h2>
+                    <div>
+                        <label for="roller-outer-diameter-number" class="block text-sm">Outer Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="roller-outer-diameter-slider" min="1" max="100" value="30" class="w-full">
+                            <input type="number" id="roller-outer-diameter-number" min="1" max="100" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="roller-width-number" class="block text-sm">Width <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="roller-width-slider" min="1" max="50" value="10" class="w-full">
+                             <input type="number" id="roller-width-number" min="1" max="50" value="10" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="roller-axle-diameter-number" class="block text-sm">Axle Hole Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="roller-axle-diameter-slider" min="1" max="30" value="5" class="w-full">
+                            <input type="number" id="roller-axle-diameter-number" min="1" max="30" value="5" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="roller-chamfer-number" class="block text-sm">Edge Curve <span class="unit-label">(mm)</span></label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="roller-chamfer-slider" min="0" max="10" value="1" step="0.1" class="w-full">
+                            <input type="number" id="roller-chamfer-number" min="0" max="10" value="1" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div class="flex items-center justify-between pt-2">
+                        <label for="roller-add-groove-toggle" class="text-sm">Add Groove (Pulley)</label>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="roller-add-groove-toggle" id="roller-add-groove-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="roller-add-groove-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div id="roller-groove-params" class="hidden space-y-4">
+                        <div>
+                            <label for="roller-groove-depth-number" class="block text-sm">Groove Depth <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="roller-groove-depth-slider" min="0.1" max="20" value="5" step="0.1" class="w-full">
+                                <input type="number" id="roller-groove-depth-number" min="0.1" max="20" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="roller-groove-angle-number" class="block text-sm">Groove Angle (degrees)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="roller-groove-angle-slider" min="10" max="150" value="90" step="1" class="w-full">
+                                <input type="number" id="roller-groove-angle-number" min="10" max="150" value="90" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <label for="roller-groove-fillet-toggle" class="text-sm">Add Fillet</label>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="roller-groove-fillet-toggle" id="roller-groove-fillet-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <label for="roller-groove-fillet-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                            </div>
+                        </div>
+                        <div id="roller-fillet-params" class="hidden">
+                            <label for="roller-fillet-radius-number" class="block text-sm">Fillet Radius <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="roller-fillet-radius-slider" min="0.1" max="10" value="1" step="0.1" class="w-full">
+                                <input type="number" id="roller-fillet-radius-number" min="0.1" max="10" value="1" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Washer Parameters -->
+                <div id="washer-params" class="space-y-4 hidden">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Washer Parameters</h2>
+                    <div>
+                        <label for="washer-outer-diameter-number" class="block text-sm">Outer Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="washer-outer-diameter-slider" min="1" max="100" value="30" class="w-full">
+                            <input type="number" id="washer-outer-diameter-number" min="1" max="100" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="washer-inner-diameter-number" class="block text-sm">Inner Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="washer-inner-diameter-slider" min="1" max="95" value="15" class="w-full">
+                             <input type="number" id="washer-inner-diameter-number" min="1" max="95" value="15" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="washer-thickness-number" class="block text-sm">Thickness <span class="unit-label">(mm)</span></label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="washer-thickness-slider" min="0.1" max="20" value="2" step="0.1" class="w-full">
+                            <input type="number" id="washer-thickness-number" min="0.1" max="20" value="2" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Box / Enclosure Parameters -->
+                <div id="box-params" class="space-y-4 hidden">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Box / Enclosure Parameters</h2>
+                    <div>
+                        <label for="box-length-number" class="block text-sm">Length <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="box-length-slider" min="1" max="200" value="50" class="w-full">
+                            <input type="number" id="box-length-number" min="1" max="200" value="50" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="box-width-number" class="block text-sm">Width <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="box-width-slider" min="1" max="200" value="50" class="w-full">
+                            <input type="number" id="box-width-number" min="1" max="200" value="50" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="box-height-number" class="block text-sm">Height <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="box-height-slider" min="1" max="200" value="30" class="w-full">
+                            <input type="number" id="box-height-number" min="1" max="200" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="box-wall-thickness-number" class="block text-sm">Wall Thickness <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="box-wall-thickness-slider" min="1" max="20" value="2" step="0.1" class="w-full">
+                            <input type="number" id="box-wall-thickness-number" min="1" max="20" value="2" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2">
+                        <label for="box-generate-lid-toggle" class="text-sm">Generate Lid</label>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="box-generate-lid-toggle" id="box-generate-lid-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="box-generate-lid-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div id="box-lid-params" class="hidden space-y-4 pt-2">
+                         <div>
+                            <label for="box-lid-height-number" class="block text-sm">Lid Height <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="box-lid-height-slider" min="1" max="20" value="4" step="0.1" class="w-full">
+                                <input type="number" id="box-lid-height-number" min="1" max="20" value="4" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="box-lid-tolerance-number" class="block text-sm">Lid Fit Tolerance <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="box-lid-tolerance-slider" min="-1" max="1" value="0.2" step="0.05" class="w-full">
+                                <input type="number" id="box-lid-tolerance-number" min="-1" max="1" value="0.2" step="0.05" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                         <div class="flex items-center justify-between pt-2">
+                            <label for="box-generate-handle-toggle" class="text-sm">Add Handle</label>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="box-generate-handle-toggle" id="box-generate-handle-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <label for="box-generate-handle-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                            </div>
+                        </div>
+                        <div id="box-handle-params" class="hidden space-y-4 pt-2">
+                            <div>
+                                <label for="box-handle-shape-selector" class="block text-sm">Handle Shape</label>
+                                <select id="box-handle-shape-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                    <option value="rectangle">Rectangle</option>
+                                    <option value="cylinder">Cylinder</option>
+                                </select>
+                            </div>
+                            <div id="box-handle-rectangle-params">
+                                <div>
+                                    <label for="box-handle-length-number" class="block text-sm">Handle Length <span class="unit-label">(mm)</span></label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="range" id="box-handle-length-slider" min="1" max="100" value="20" step="1" class="w-full">
+                                        <input type="number" id="box-handle-length-number" min="1" max="100" value="20" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="box-handle-width-number" class="block text-sm">Handle Width <span class="unit-label">(mm)</span></label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="range" id="box-handle-width-slider" min="1" max="100" value="10" step="1" class="w-full">
+                                        <input type="number" id="box-handle-width-number" min="1" max="100" value="10" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="box-handle-cylinder-params" class="hidden">
+                                 <div>
+                                    <label for="box-handle-diameter-number" class="block text-sm">Handle Diameter <span class="unit-label">(mm)</span></label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="range" id="box-handle-diameter-slider" min="1" max="50" value="15" step="1" class="w-full">
+                                        <input type="number" id="box-handle-diameter-number" min="1" max="50" value="15" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="box-handle-height-number" class="block text-sm">Handle Height <span class="unit-label">(mm)</span></label>
+                                <div class="flex items-center space-x-2">
+                                    <input type="range" id="box-handle-height-slider" min="1" max="20" value="5" step="0.1" class="w-full">
+                                    <input type="number" id="box-handle-height-number" min="1" max="20" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Knob Parameters -->
+                <div id="knob-params" class="space-y-4 hidden">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Knob Parameters</h2>
+                    <div>
+                        <label for="knob-outer-diameter-number" class="block text-sm">Outer Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="knob-outer-diameter-slider" min="1" max="100" value="30" class="w-full">
+                            <input type="number" id="knob-outer-diameter-number" min="1" max="100" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="knob-height-number" class="block text-sm">Height <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="knob-height-slider" min="1" max="50" value="20" class="w-full">
+                            <input type="number" id="knob-height-number" min="1" max="50" value="20" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="knob-grip-style-selector" class="block text-sm">Grip Style</label>
+                        <select id="knob-grip-style-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="smooth">Smooth</option>
+                            <option value="knurled">Knurled</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="knob-shaft-type-selector" class="block text-sm">Shaft Type</label>
+                        <select id="knob-shaft-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round">Round</option>
+                            <option value="d-shaft">D-Shaft</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="knob-shaft-round-d-params">
+                        <label for="knob-shaft-diameter-number" class="block text-sm">Shaft Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="knob-shaft-diameter-slider" min="1" max="20" value="6" step="0.1" class="w-full">
+                            <input type="number" id="knob-shaft-diameter-number" min="1" max="20" value="6" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="knob-shaft-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="knob-square-width-number" class="block text-sm">Square Width <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="knob-square-width-slider" min="1" max="20" value="6" step="0.1" class="w-full">
+                                <input type="number" id="knob-square-width-number" min="1" max="20" value="6" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="knob-square-height-number" class="block text-sm">Square Height <span class="unit-label">(mm)</span></label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="knob-square-height-slider" min="1" max="20" value="6" step="0.1" class="w-full">
+                                <input type="number" id="knob-square-height-number" min="1" max="20" value="6" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Funnel Parameters -->
+                <div id="funnel-params" class="space-y-4 hidden">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Funnel Parameters</h2>
+                     <div>
+                        <label for="funnel-top-diameter-number" class="block text-sm">Top Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-top-diameter-slider" min="1" max="150" value="80" class="w-full">
+                            <input type="number" id="funnel-top-diameter-number" min="1" max="150" value="80" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="funnel-bottom-diameter-number" class="block text-sm">Bottom Diameter <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-bottom-diameter-slider" min="1" max="50" value="10" class="w-full">
+                            <input type="number" id="funnel-bottom-diameter-number" min="1" max="50" value="10" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="funnel-height-number" class="block text-sm">Funnel Height <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-height-slider" min="1" max="150" value="50" class="w-full">
+                            <input type="number" id="funnel-height-number" min="1" max="150" value="50" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="funnel-spout-length-number" class="block text-sm">Spout Length <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-spout-length-slider" min="1" max="100" value="30" class="w-full">
+                            <input type="number" id="funnel-spout-length-number" min="1" max="100" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="funnel-wall-thickness-number" class="block text-sm">Wall Thickness <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-wall-thickness-slider" min="1" max="10" value="2" step="0.1" class="w-full">
+                            <input type="number" id="funnel-wall-thickness-number" min="1" max="10" value="2" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="funnel-fillet-radius-number" class="block text-sm">Fillet Radius <span class="unit-label">(mm)</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="funnel-fillet-radius-slider" min="0" max="20" value="2" step="0.1" class="w-full">
+                            <input type="number" id="funnel-fillet-radius-number" min="0" max="20" value="2" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+             <!-- Viewer Settings -->
+            <div class="mt-8 pt-4 border-t border-gray-700">
+                 <h2 class="text-lg font-semibold text-gray-300 mb-2">Viewer Settings</h2>
+                 <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label for="part-color" class="text-sm">Part Color</label>
+                        <input type="color" id="part-color" value="#00bcd4" class="w-10 h-8 p-1 bg-gray-700 rounded cursor-pointer">
+                    </div>
+                     <div class="flex items-center justify-between">
+                        <label for="grid-toggle" class="text-sm">Show Grid</label>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="grid-toggle" id="grid-toggle" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="grid-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 pt-4 border-t border-gray-700 space-y-2">
+                <button id="export-stl" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Export to STL
+                </button>
+                <button id="reset-params" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Reset to Defaults
+                </button>
+            </div>
+        </aside>
+
+        <!-- 3D Viewer -->
+        <main id="renderer-container" class="flex-grow bg-gray-800 w-full relative md:h-auto h-1/2">
+             <!-- Loading Indicator -->
+            <div id="loading-indicator" class="absolute inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-20">
+                <div class="text-center">
+                    <svg class="animate-spin h-8 w-8 text-cyan-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="mt-2 text-lg">Loading 3D Viewer...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.132.2';
+        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js';
+        import { STLExporter } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/exporters/STLExporter.js';
+        import * as BufferGeometryUtils from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/utils/BufferGeometryUtils.js';
+
+        let scene, camera, renderer, controls, currentObject, gridHelper;
+        let currentUnit = 'mm';
+        const MM_TO_IN = 1 / 25.4;
+
+        // Store original default params in mm
+        const defaultParamsMM = {
+            roller: {
+                'roller-outer-diameter': 30, 'roller-width': 10, 'roller-axle-diameter': 5, 'roller-chamfer': 1,
+                'roller-add-groove-toggle': false, 'roller-groove-depth': 5, 'roller-groove-angle': 90,
+                'roller-groove-fillet-toggle': false, 'roller-fillet-radius': 1
+            },
+            washer: {
+                'washer-outer-diameter': 30, 'washer-inner-diameter': 15, 'washer-thickness': 2,
+            },
+            box: {
+                'box-length': 50, 'box-width': 50, 'box-height': 30, 'box-wall-thickness': 2, 'box-generate-lid-toggle': false, 'box-lid-height': 4, 'box-lid-tolerance': 0.2,
+                'box-generate-handle-toggle': false, 'box-handle-shape-selector': 'rectangle', 
+                'box-handle-length': 20, 'box-handle-width': 10, 'box-handle-diameter': 15, 'box-handle-height': 5,
+            },
+            knob: {
+                'knob-outer-diameter': 30, 'knob-height': 20, 'knob-grip-style-selector': 'smooth', 'knob-shaft-type-selector': 'round', 
+                'knob-shaft-diameter': 6, 'knob-square-width': 6, 'knob-square-height': 6
+            },
+            funnel: {
+                'funnel-top-diameter': 80, 'funnel-bottom-diameter': 10, 'funnel-height': 50, 'funnel-spout-length': 30, 'funnel-wall-thickness': 2,
+                'funnel-fillet-radius': 2
+            }
+        };
+
+        // --- Core 3D Scene Setup ---
+        function init3D() {
+            const container = document.getElementById('renderer-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x334155); 
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(40, 50, 60);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            scene.add(directionalLight);
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            gridHelper = new THREE.GridHelper(100, 10);
+            scene.add(gridHelper);
+            window.addEventListener('resize', onWindowResize, false);
+            document.getElementById('loading-indicator').style.display = 'none';
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('renderer-container');
+            if (container) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+        
+        // --- Unit Conversion Utility ---
+        function getValue(id) {
+            const numberInput = document.getElementById(`${id}-number`);
+            const val = parseFloat(numberInput.dataset.valueMm);
+            return val;
+        }
+
+        // --- Geometry Generation ---
+        function createRoller() {
+            const outerDiameter = getValue('roller-outer-diameter');
+            const width = getValue('roller-width');
+            const axleDiameter = getValue('roller-axle-diameter');
+            let chamfer = getValue('roller-chamfer');
+            const addGroove = document.getElementById('roller-add-groove-toggle').checked;
+            
+            const outerRadius = outerDiameter / 2;
+            const axleRadius = axleDiameter / 2;
+            const halfWidth = width / 2;
+            
+            chamfer = Math.min(chamfer, outerRadius - axleRadius, halfWidth);
+            if (chamfer < 0) chamfer = 0;
+
+            const shape = new THREE.Shape();
+            
+            shape.moveTo(axleRadius, -halfWidth);
+            shape.lineTo(outerRadius - chamfer, -halfWidth);
+
+            if (chamfer > 0) {
+                shape.quadraticCurveTo(outerRadius, -halfWidth, outerRadius, -halfWidth + chamfer);
+            }
+
+            if (addGroove) {
+                const grooveDepth = getValue('roller-groove-depth');
+                const grooveAngleDeg = parseFloat(document.getElementById('roller-groove-angle-number').value);
+                const grooveAngleRad = grooveAngleDeg * (Math.PI / 180);
+                const addFillet = document.getElementById('roller-groove-fillet-toggle').checked;
+                let filletRadius = addFillet ? getValue('roller-fillet-radius') : 0;
+                
+                const grooveBottomRadius = outerRadius - grooveDepth;
+                const yOffset = grooveDepth / Math.tan(grooveAngleRad / 2);
+                
+                filletRadius = Math.min(filletRadius, yOffset, grooveDepth);
+
+                shape.lineTo(outerRadius, -yOffset); 
+                
+                if (addFillet && filletRadius > 0) {
+                     shape.quadraticCurveTo(grooveBottomRadius, 0, outerRadius, yOffset);
+                } else {
+                    shape.lineTo(grooveBottomRadius, 0);
+                    shape.lineTo(outerRadius, yOffset);
+                }
+                 shape.lineTo(outerRadius, halfWidth - chamfer);
+            } else {
+                 shape.lineTo(outerRadius, halfWidth - chamfer);
+            }
+            
+            if (chamfer > 0) {
+                shape.quadraticCurveTo(outerRadius, halfWidth, outerRadius - chamfer, halfWidth);
+            }
+            shape.lineTo(axleRadius, halfWidth);
+            shape.closePath();
+
+            const points = shape.getPoints(64);
+            const geometry = new THREE.LatheGeometry(points, 32);
+            geometry.center();
+            geometry.rotateX(Math.PI / 2);
+            const box = new THREE.Box3().setFromObject(new THREE.Mesh(geometry));
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            geometry.translate(-center.x, -box.min.y, -center.z);
+            return geometry;
+        }
+        
+        function createWasher() {
+            let outerDiameter = getValue('washer-outer-diameter');
+            let innerDiameter = getValue('washer-inner-diameter');
+            const thickness = getValue('washer-thickness');
+            if (innerDiameter >= outerDiameter) { innerDiameter = outerDiameter - 1; }
+            const shape = new THREE.Shape();
+            shape.absarc(0, 0, outerDiameter / 2, 0, Math.PI * 2, false);
+            const hole = new THREE.Path();
+            hole.absarc(0, 0, innerDiameter / 2, 0, Math.PI * 2, true);
+            shape.holes.push(hole);
+            const extrudeSettings = { depth: thickness, bevelEnabled: false };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.rotateX(Math.PI / 2); // Rotate to lay flat
+            geometry.center();
+            geometry.translate(0, thickness / 2, 0); // Move up to sit on the grid
+            return geometry;
+        }
+
+        function createBox() {
+            const L = getValue('box-length');
+            const W = getValue('box-width');
+            const H = getValue('box-height');
+            const T = getValue('box-wall-thickness');
+            const generateLid = document.getElementById('box-generate-lid-toggle').checked;
+            
+            const geometries = [];
+
+            // --- Create the Box (always open top) ---
+            const baseGeo = new THREE.BoxGeometry(L, T, W);
+            baseGeo.translate(0, -H/2 + T/2, 0);
+            geometries.push(baseGeo);
+
+            const sideH = H - T;
+            const sideY = T/2;
+            
+            const frontGeo = new THREE.BoxGeometry(L, sideH, T);
+            frontGeo.translate(0, sideY, W/2 - T/2);
+            geometries.push(frontGeo);
+
+            const backGeo = new THREE.BoxGeometry(L, sideH, T);
+            backGeo.translate(0, sideY, -W/2 + T/2);
+            geometries.push(backGeo);
+
+            const leftGeo = new THREE.BoxGeometry(T, sideH, W - 2*T);
+            leftGeo.translate(-L/2 + T/2, sideY, 0);
+            geometries.push(leftGeo);
+            
+            const rightGeo = new THREE.BoxGeometry(T, sideH, W - 2*T);
+            rightGeo.translate(L/2 - T/2, sideY, 0);
+            geometries.push(rightGeo);
+
+            // --- Create the Lid (if toggled) ---
+            if (generateLid) {
+                const lidHeight = getValue('box-lid-height');
+                const lidTolerance = getValue('box-lid-tolerance');
+                
+                const lidGeometries = [];
+
+                const lidPlateGeo = new THREE.BoxGeometry(L, T, W);
+                lidGeometries.push(lidPlateGeo);
+
+                const lipHeight = lidHeight - T;
+                if (lipHeight > 0) {
+                    const lipGeo = new THREE.BoxGeometry(L - 2*T - lidTolerance, lipHeight, W - 2*T - lidTolerance);
+                    lipGeo.translate(0, -lipHeight/2 - T/2, 0);
+                    lidGeometries.push(lipGeo);
+                }
+                
+                const generateHandle = document.getElementById('box-generate-handle-toggle').checked;
+                if (generateHandle) {
+                    const handleHeight = getValue('box-handle-height');
+                    const handleShape = document.getElementById('box-handle-shape-selector').value;
+                    let handleGeo;
+
+                    if (handleShape === 'rectangle') {
+                        const handleLength = getValue('box-handle-length');
+                        const handleWidth = getValue('box-handle-width');
+                        handleGeo = new THREE.BoxGeometry(handleLength, handleHeight, handleWidth);
+                    } else { // cylinder
+                        const handleDiameter = getValue('box-handle-diameter');
+                        handleGeo = new THREE.CylinderGeometry(handleDiameter / 2, handleDiameter / 2, handleHeight, 32);
+                    }
+                    handleGeo.translate(0, T / 2 + handleHeight / 2, 0);
+                    lidGeometries.push(handleGeo);
+                }
+
+                const lidMerged = BufferGeometryUtils.mergeBufferGeometries(lidGeometries);
+                lidMerged.translate(0, H / 2 + lidHeight / 2 + 5, 0);
+                geometries.push(lidMerged);
+            }
+            
+            const finalGeo = BufferGeometryUtils.mergeBufferGeometries(geometries);
+            finalGeo.center();
+            finalGeo.translate(0, H / 2, 0); // Move up to sit on the grid
+            return finalGeo;
+        }
+        
+        function createKnob() {
+            const outerDiameter = getValue('knob-outer-diameter');
+            const height = getValue('knob-height');
+            const gripStyle = document.getElementById('knob-grip-style-selector').value;
+            const shaftType = document.getElementById('knob-shaft-type-selector').value;
+            
+            const outerRadius = outerDiameter / 2;
+
+            const shape = new THREE.Shape();
+            if (gripStyle === 'knurled') {
+                const numKnurls = 40;
+                const knurlDepth = outerRadius * 0.05;
+                shape.moveTo(outerRadius, 0);
+                 for (let i = 0; i <= numKnurls; i++) {
+                    const angle1 = (i / numKnurls) * Math.PI * 2;
+                    const angle2 = ((i + 0.5) / numKnurls) * Math.PI * 2;
+                    shape.lineTo(Math.cos(angle1) * outerRadius, Math.sin(angle1) * outerRadius);
+                    shape.lineTo(Math.cos(angle2) * (outerRadius - knurlDepth), Math.sin(angle2) * (outerRadius - knurlDepth));
+                }
+            } else { // Smooth
+                shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+            }
+
+            const holePath = new THREE.Path();
+            if (shaftType === 'round' || shaftType === 'd-shaft') {
+                const shaftDiameter = getValue('knob-shaft-diameter');
+                const shaftRadius = shaftDiameter / 2;
+                if (shaftType === 'd-shaft') {
+                    const flatDepth = shaftRadius * 0.9;
+                    const angle = Math.acos(flatDepth / shaftRadius);
+                    holePath.absarc(0, 0, shaftRadius, angle, (2 * Math.PI) - angle, false);
+                    holePath.lineTo(flatDepth, -Math.sqrt(shaftRadius*shaftRadius - flatDepth*flatDepth));
+                } else {
+                    holePath.absarc(0, 0, shaftRadius, 0, Math.PI * 2, true);
+                }
+            } else { // square
+                const squareWidth = getValue('knob-square-width');
+                const squareHeight = getValue('knob-square-height');
+                const halfW = squareWidth / 2;
+                const halfH = squareHeight / 2;
+                holePath.moveTo(-halfW, -halfH);
+                holePath.lineTo(halfW, -halfH);
+                holePath.lineTo(halfW, halfH);
+                holePath.lineTo(-halfW, halfH);
+                holePath.lineTo(-halfW, -halfH);
+            }
+            shape.holes.push(holePath);
+
+            const extrudeSettings = { depth: height, bevelEnabled: true, bevelSize: 0.5, bevelThickness: 0.5, bevelSegments: 2 };
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.center();
+            geometry.rotateX(Math.PI / 2);
+            geometry.translate(0, height / 2, 0); // Move up to sit on the grid
+            return geometry;
+        }
+
+        function createFunnel() {
+            const topRadius = getValue('funnel-top-diameter') / 2;
+            const bottomRadius = getValue('funnel-bottom-diameter') / 2;
+            const funnelHeight = getValue('funnel-height');
+            const spoutLength = getValue('funnel-spout-length');
+            const wallThickness = getValue('funnel-wall-thickness');
+            let filletRadius = getValue('funnel-fillet-radius');
+            filletRadius = Math.min(filletRadius, (topRadius - bottomRadius)/2, funnelHeight/2);
+
+
+            const shape = new THREE.Shape();
+
+            // Outer Profile
+            shape.moveTo(bottomRadius, 0);
+            shape.lineTo(bottomRadius, spoutLength);
+            if (filletRadius > 0) {
+                 shape.quadraticCurveTo(bottomRadius, spoutLength + filletRadius, topRadius, spoutLength + funnelHeight);
+            } else {
+                shape.lineTo(topRadius, spoutLength + funnelHeight);
+            }
+            
+            // Inner Profile (reversed)
+            shape.lineTo(topRadius - wallThickness, spoutLength + funnelHeight);
+            if(filletRadius > 0) {
+                 shape.quadraticCurveTo(bottomRadius - wallThickness, spoutLength + filletRadius, bottomRadius - wallThickness, spoutLength);
+            } else {
+                shape.lineTo(bottomRadius - wallThickness, spoutLength);
+            }
+            shape.lineTo(bottomRadius - wallThickness, 0);
+            shape.lineTo(bottomRadius, 0);
+
+
+            const geometry = new THREE.LatheGeometry(shape.getPoints(64), 32);
+            geometry.rotateX(Math.PI);
+            geometry.translate(0, spoutLength + funnelHeight, 0);
+            
+            return geometry;
+        }
+
+
+        function updateMesh() {
+            if (currentObject) {
+                scene.remove(currentObject);
+                if(currentObject.geometry) currentObject.geometry.dispose();
+                if(currentObject.material) currentObject.material.dispose();
+            }
+            let geometry;
+            const partType = document.getElementById('part-selector').value;
+            try {
+                if (partType === 'roller') geometry = createRoller();
+                else if (partType === 'washer') geometry = createWasher();
+                else if (partType === 'box') geometry = createBox();
+                else if (partType === 'knob') geometry = createKnob();
+                else if (partType === 'funnel') geometry = createFunnel();
+                else geometry = new THREE.BoxGeometry(1, 1, 1);
+                const partColor = document.getElementById('part-color').value;
+                const material = new THREE.MeshStandardMaterial({ color: partColor, metalness: 0.3, roughness: 0.6 });
+                currentObject = new THREE.Mesh(geometry, material);
+                scene.add(currentObject);
+            } catch (error) {
+                console.error("Failed to create part geometry:", error);
+            }
+        }
+        
+        function resetParameters() {
+            const partType = document.getElementById('part-selector').value;
+            const defaults = defaultParamsMM[partType];
+            if (!defaults) return;
+            for (const param in defaults) {
+                const valueMM = defaults[param];
+                const input = document.getElementById(param) || document.getElementById(`${param}-slider`);
+                if (input && (input.type === 'checkbox' || input.tagName === 'SELECT')) {
+                    if (input.type === 'checkbox') input.checked = valueMM;
+                    else input.value = valueMM;
+                    input.dispatchEvent(new Event('change'));
+                } else if (input) {
+                     const displayValue = currentUnit === 'mm' ? valueMM : valueMM * MM_TO_IN;
+                     if (param.includes('count') || param.includes('angle')) {
+                         document.getElementById(`${param}-slider`).value = valueMM;
+                         document.getElementById(`${param}-number`).value = valueMM;
+                    } else {
+                         document.getElementById(`${param}-slider`).value = displayValue.toFixed(3);
+                         document.getElementById(`${param}-number`).value = displayValue.toFixed(3);
+                    }
+                }
+            }
+            // Manually trigger the unit conversion logic to set the initial data-value-mm attributes
+            document.querySelectorAll('input[type="number"]').forEach(numberInput => {
+                if (!numberInput.id.includes('angle')) {
+                    numberInput.dataset.valueMm = currentUnit === 'in' ? numberInput.value / MM_TO_IN : numberInput.value;
+                }
+            });
+            updateMesh();
+        }
+
+        function handleUnitChange(newUnit) {
+            if (currentUnit === newUnit) return;
+            const oldUnit = currentUnit;
+            currentUnit = newUnit;
+
+            const conversionFactor = (oldUnit === 'mm' && newUnit === 'in') ? MM_TO_IN : 1 / MM_TO_IN;
+
+            document.querySelectorAll('input[type="range"], input[type="number"]').forEach(input => {
+                 if (input.type === 'checkbox' || input.id.includes('angle')) return;
+                
+                const isSlider = input.type === 'range';
+                const numberInput = isSlider ? document.getElementById(input.id.replace('-slider', '-number')) : input;
+                const sliderInput = isSlider ? input : document.getElementById(input.id.replace('-number', '-slider'));
+                
+                const valueInMm = parseFloat(numberInput.dataset.valueMm);
+                
+                if(!isNaN(valueInMm)) {
+                    const convertedValue = valueInMm * conversionFactor;
+                    numberInput.value = convertedValue.toFixed(3);
+                    if(sliderInput) sliderInput.value = convertedValue.toFixed(3);
+
+                    if (sliderInput) {
+                        sliderInput.min = (parseFloat(sliderInput.dataset.minMm) * (newUnit === 'in' ? MM_TO_IN : 1)).toFixed(4);
+                        sliderInput.max = (parseFloat(sliderInput.dataset.maxMm) * (newUnit === 'in' ? MM_TO_IN : 1)).toFixed(4);
+                        sliderInput.step = (parseFloat(sliderInput.dataset.stepMm) * (newUnit === 'in' ? MM_TO_IN : 1)).toFixed(5);
+                    }
+                }
+            });
+
+            document.querySelectorAll('.unit-label').forEach(label => {
+                label.textContent = `(${newUnit})`;
+            });
+            updateMesh(); // Redraw the mesh, though its actual size won't change.
+        }
+
+        function setupEventListeners() {
+            const partSelector = document.getElementById('part-selector');
+            const paramsDivs = {
+                roller: document.getElementById('roller-params'),
+                washer: document.getElementById('washer-params'),
+                box: document.getElementById('box-params'),
+                knob: document.getElementById('knob-params'),
+                funnel: document.getElementById('funnel-params'),
+            };
+            partSelector.addEventListener('change', (e) => {
+                Object.values(paramsDivs).forEach(div => div.classList.add('hidden'));
+                paramsDivs[e.target.value].classList.remove('hidden');
+                resetParameters();
+            });
+            const syncInputs = (sliderId, numberId) => {
+                const slider = document.getElementById(sliderId);
+                const number = document.getElementById(numberId);
+
+                const isAngle = sliderId.includes('angle');
+
+                if (!isAngle) {
+                    number.dataset.valueMm = number.value;
+                }
+
+                slider.addEventListener('input', () => { 
+                    number.value = slider.value;
+                    if (!isAngle) {
+                        number.dataset.valueMm = currentUnit === 'in' ? slider.value / MM_TO_IN : slider.value;
+                    }
+                    updateMesh();
+                });
+                number.addEventListener('input', () => { 
+                    slider.value = number.value; 
+                    if (!isAngle) {
+                        number.dataset.valueMm = currentUnit === 'in' ? number.value / MM_TO_IN : number.value;
+                    }
+                    updateMesh();
+                });
+            };
+            Object.values(defaultParamsMM).forEach(partParams => {
+                Object.keys(partParams).forEach(param => {
+                    const input = document.getElementById(param) || document.getElementById(`${param}-slider`);
+                    if (input && input.type !== 'checkbox' && input.tagName !== 'SELECT') {
+                         syncInputs(`${param}-slider`, `${param}-number`);
+                    }
+                });
+            });
+            document.querySelectorAll('input[type="checkbox"], select').forEach(toggle => {
+                toggle.addEventListener('change', updateMesh);
+            });
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                slider.dataset.minMm = slider.min;
+                slider.dataset.maxMm = slider.max;
+                slider.dataset.stepMm = slider.step;
+            });
+            
+            const lidToggle = document.getElementById('box-generate-lid-toggle');
+            lidToggle.addEventListener('change', () => {
+                document.getElementById('box-lid-params').classList.toggle('hidden', !lidToggle.checked);
+            });
+            const handleToggle = document.getElementById('box-generate-handle-toggle');
+            handleToggle.addEventListener('change', () => {
+                document.getElementById('box-handle-params').classList.toggle('hidden', !handleToggle.checked);
+            });
+            const handleShapeSelector = document.getElementById('box-handle-shape-selector');
+            handleShapeSelector.addEventListener('change', () => {
+                const isRect = handleShapeSelector.value === 'rectangle';
+                document.getElementById('box-handle-rectangle-params').classList.toggle('hidden', !isRect);
+                document.getElementById('box-handle-cylinder-params').classList.toggle('hidden', isRect);
+            });
+
+             document.getElementById('knob-shaft-type-selector').addEventListener('change', (e) => {
+                const shaftType = e.target.value;
+                document.getElementById('knob-shaft-round-d-params').classList.toggle('hidden', shaftType === 'square');
+                document.getElementById('knob-shaft-square-params').classList.toggle('hidden', shaftType !== 'square');
+            });
+
+            document.getElementById('roller-add-groove-toggle').addEventListener('change', (e) => {
+                 document.getElementById('roller-groove-params').classList.toggle('hidden', !e.target.checked);
+            });
+            
+            document.getElementById('roller-groove-fillet-toggle').addEventListener('change', (e) => {
+                 document.getElementById('roller-fillet-params').classList.toggle('hidden', !e.target.checked);
+            });
+            
+            document.getElementById('part-color').addEventListener('input', (e) => { if(currentObject?.material) { currentObject.material.color.set(e.target.value); }});
+            document.getElementById('grid-toggle').addEventListener('change', (e) => { if(gridHelper) gridHelper.visible = e.target.checked; });
+            document.getElementById('unit-mm').addEventListener('change', () => handleUnitChange('mm'));
+            document.getElementById('unit-in').addEventListener('change', () => handleUnitChange('in'));
+            document.getElementById('export-stl').addEventListener('click', () => {
+                if (!currentObject) return;
+                const exporter = new STLExporter();
+                const result = exporter.parse(currentObject, { binary: true });
+                const blob = new Blob([result], { type: 'application/sla' });
+                const link = document.createElement('a');
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.href = URL.createObjectURL(blob);
+                link.download = `${partSelector.value}_part.stl`;
+                link.click();
+                document.body.removeChild(link);
+            });
+            document.getElementById('reset-params').addEventListener('click', resetParameters);
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            setupEventListeners();
+            document.getElementById('roller-params').classList.remove('hidden');
+            updateMesh(); 
+        });
+    </script>
+</body>
+</html>
