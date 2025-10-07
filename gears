@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parametric Spur Gear Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        #renderer-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .toggle-checkbox:checked { right: 0; border-color: #48bb78; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #48bb78; }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-800 text-white overflow-hidden h-screen">
+
+    <div class="flex flex-col md:flex-row h-full">
+        <!-- Sidebar Controls -->
+        <aside class="w-full md:w-80 lg:w-96 bg-gray-900 p-6 overflow-y-auto flex-shrink-0 md:h-auto h-1/2">
+            <h1 class="text-2xl font-bold text-cyan-400 mb-2">Parametric Gear Creator</h1>
+            <p class="text-sm text-gray-400 mb-6">Create custom spur gears by adjusting the parameters below.</p>
+
+            <!-- Dynamic Parameter Sections -->
+            <div id="params-container">
+                <!-- Gear Parameters -->
+                <div id="gear-params" class="space-y-4">
+                    <div class="flex items-center justify-between pt-2">
+                        <label for="num-gears-selector" class="text-sm font-semibold text-cyan-400">Number of Gears</label>
+                        <select id="num-gears-selector" class="w-1/2 bg-gray-700 border border-gray-600 rounded-lg py-1 px-3 text-sm">
+                            <option value="1" selected>1 Gear</option>
+                            <option value="2">2 Gears</option>
+                            <option value="3">3 Gears</option>
+                            <option value="4">4 Gears</option>
+                            <option value="5">5 Gears</option>
+                            <option value="6">6 Gears</option>
+                        </select>
+                    </div>
+
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Shared Parameters</h2>
+                    <div>
+                        <label for="gear-module-number" class="block text-sm">Module</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="gear-module-slider" min="0.5" max="5" value="1" step="0.1" class="w-full">
+                            <input type="number" id="gear-module-number" min="0.5" max="5" value="1" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                     <div>
+                        <label for="gear-pressure-angle-number" class="block text-sm">Pressure Angle (degrees)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="gear-pressure-angle-slider" min="10" max="45" value="20" step="1" class="w-full">
+                            <input type="number" id="gear-pressure-angle-number" min="10" max="45" value="20" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear-face-width-number" class="block text-sm">Face Width (Thickness)</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear-face-width-slider" min="1" max="50" value="10" class="w-full">
+                            <input type="number" id="gear-face-width-number" min="1" max="50" value="10" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear-type-selector" class="block text-sm">Gear Type</label>
+                        <select id="gear-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="spur" selected>Spur</option>
+                            <option value="helical">Helical</option>
+                            <option value="herringbone">Herringbone</option>
+                        </select>
+                    </div>
+                    <div id="gear-helix-params" class="hidden">
+                        <label for="gear-helix-angle-number" class="block text-sm">Helix Angle (degrees)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="gear-helix-angle-slider" min="10" max="60" value="45" step="1" class="w-full">
+                            <input type="number" id="gear-helix-angle-number" min="10" max="60" value="45" step="1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2 pt-4">Gear 1 Parameters</h2>
+                    <div>
+                        <label for="gear1-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear1-teeth-slider" min="5" max="100" value="40" class="w-full">
+                             <input type="number" id="gear1-teeth-number" min="5" max="100" value="40" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear1-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear1-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear1-bore-round-params">
+                        <label for="gear1-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear1-bore-diameter-slider" min="0" max="50" value="8" class="w-full">
+                            <input type="number" id="gear1-bore-diameter-number" min="0" max="50" value="8" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear1-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear1-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear1-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear1-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear1-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear1-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear1-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="gear2-params" class="space-y-4 hidden pt-4 border-t border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Gear 2 Parameters</h2>
+                    <div>
+                        <label for="gear2-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear2-teeth-slider" min="5" max="100" value="20" class="w-full">
+                             <input type="number" id="gear2-teeth-number" min="5" max="100" value="20" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear2-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear2-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear2-bore-round-params">
+                        <label for="gear2-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear2-bore-diameter-slider" min="0" max="50" value="5" class="w-full">
+                            <input type="number" id="gear2-bore-diameter-number" min="0" max="50" value="5" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear2-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear2-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear2-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear2-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear2-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear2-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear2-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gear3-params" class="space-y-4 hidden pt-4 border-t border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Gear 3 Parameters</h2>
+                    <div>
+                        <label for="gear3-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear3-teeth-slider" min="5" max="100" value="30" class="w-full">
+                             <input type="number" id="gear3-teeth-number" min="5" max="100" value="30" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear3-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear3-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear3-bore-round-params">
+                        <label for="gear3-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear3-bore-diameter-slider" min="0" max="50" value="6" class="w-full">
+                            <input type="number" id="gear3-bore-diameter-number" min="0" max="50" value="6" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear3-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear3-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear3-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear3-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear3-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear3-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear3-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                 <div id="gear4-params" class="space-y-4 hidden pt-4 border-t border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Gear 4 Parameters</h2>
+                    <div>
+                        <label for="gear4-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear4-teeth-slider" min="5" max="100" value="25" class="w-full">
+                             <input type="number" id="gear4-teeth-number" min="5" max="100" value="25" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear4-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear4-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear4-bore-round-params">
+                        <label for="gear4-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear4-bore-diameter-slider" min="0" max="50" value="7" class="w-full">
+                            <input type="number" id="gear4-bore-diameter-number" min="0" max="50" value="7" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear4-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear4-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear4-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear4-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear4-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear4-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear4-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <div id="gear5-params" class="space-y-4 hidden pt-4 border-t border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Gear 5 Parameters</h2>
+                    <div>
+                        <label for="gear5-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear5-teeth-slider" min="5" max="100" value="15" class="w-full">
+                             <input type="number" id="gear5-teeth-number" min="5" max="100" value="15" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear5-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear5-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear5-bore-round-params">
+                        <label for="gear5-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear5-bore-diameter-slider" min="0" max="50" value="4" class="w-full">
+                            <input type="number" id="gear5-bore-diameter-number" min="0" max="50" value="4" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear5-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear5-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear5-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear5-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear5-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear5-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear5-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <div id="gear6-params" class="space-y-4 hidden pt-4 border-t border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 border-b border-gray-700 pb-2">Gear 6 Parameters</h2>
+                    <div>
+                        <label for="gear6-teeth-number" class="block text-sm">Number of Teeth</label>
+                        <div class="flex items-center space-x-2">
+                             <input type="range" id="gear6-teeth-slider" min="5" max="100" value="35" class="w-full">
+                             <input type="number" id="gear6-teeth-number" min="5" max="100" value="35" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="gear6-bore-type-selector" class="block text-sm">Bore Type</label>
+                        <select id="gear6-bore-type-selector" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3">
+                            <option value="round" selected>Round</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div id="gear6-bore-round-params">
+                        <label for="gear6-bore-diameter-number" class="block text-sm">Bore Diameter</label>
+                         <div class="flex items-center space-x-2">
+                            <input type="range" id="gear6-bore-diameter-slider" min="0" max="50" value="9" class="w-full">
+                            <input type="number" id="gear6-bore-diameter-number" min="0" max="50" value="9" class="w-20 bg-gray-700 rounded p-1 text-center">
+                        </div>
+                    </div>
+                    <div id="gear6-bore-square-params" class="hidden space-y-4">
+                        <div>
+                            <label for="gear6-square-bore-width-number" class="block text-sm">Square Bore Width</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear6-square-bore-width-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear6-square-bore-width-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="gear6-square-bore-height-number" class="block text-sm">Square Bore Height</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" id="gear6-square-bore-height-slider" min="1" max="50" value="5" step="0.1" class="w-full">
+                                <input type="number" id="gear6-square-bore-height-number" min="1" max="50" value="5" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+             <!-- Viewer Settings -->
+            <div class="mt-8 pt-4 border-t border-gray-700">
+                 <h2 class="text-lg font-semibold text-gray-300 mb-2">Viewer Settings</h2>
+                 <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label for="part-color" class="text-sm">Part Color</label>
+                        <input type="color" id="part-color" value="#00bcd4" class="w-10 h-8 p-1 bg-gray-700 rounded cursor-pointer">
+                    </div>
+                     <div class="flex items-center justify-between">
+                        <label for="grid-toggle" class="text-sm">Show Grid</label>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="grid-toggle" id="grid-toggle" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="grid-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label for="animate-toggle" class="text-sm">Animate Gears</label>
+                        <button id="animate-toggle" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-1 px-3 rounded-lg text-sm">Play</button>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 pt-4 border-t border-gray-700 space-y-2">
+                <button id="export-assembly" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Export Assembly
+                </button>
+                 <button id="export-individual" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Export Individual Gears
+                </button>
+            </div>
+        </aside>
+
+        <!-- 3D Viewer -->
+        <main id="renderer-container" class="flex-grow bg-gray-800 w-full relative md:h-auto h-1/2">
+             <!-- Loading Indicator -->
+            <div id="loading-indicator" class="absolute inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-20">
+                <div class="text-center">
+                    <svg class="animate-spin h-8 w-8 text-cyan-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="mt-2 text-lg">Loading 3D Viewer...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.132.2';
+        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js';
+        import { STLExporter } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/exporters/STLExporter.js';
+
+        let scene, camera, renderer, controls, currentObject, gridHelper;
+        let animationPlaying = false;
+
+        // --- Core 3D Scene Setup ---
+        function init3D() {
+            const container = document.getElementById('renderer-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x334155); 
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(40, 50, 60);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            scene.add(directionalLight);
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            gridHelper = new THREE.GridHelper(100, 10);
+            scene.add(gridHelper);
+            window.addEventListener('resize', onWindowResize, false);
+            document.getElementById('loading-indicator').style.display = 'none';
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (animationPlaying && currentObject) {
+                const gear1 = currentObject.getObjectByName('gear1');
+                
+                if(gear1) gear1.rotation.y += 0.01;
+
+                for(let i=2; i<=6; i++) {
+                    const gearN = currentObject.getObjectByName(`gear${i}`);
+                    if(gear1 && gearN){
+                        const teeth1 = parseInt(document.getElementById('gear1-teeth-number').value);
+                        const teethN = parseInt(document.getElementById(`gear${i}-teeth-number`).value);
+                        gearN.rotation.y -= 0.01 * (teeth1 / teethN);
+                    }
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('renderer-container');
+            if (container) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        }
+
+        // --- Geometry Generation ---
+        function createSpurGear(params) {
+            const { numTeeth, module, faceWidth, boreType, boreDiameter, squareBoreWidth, squareBoreHeight, pressureAngle, gearType, helixAngle } = params;
+            
+            const pitchDiameter = numTeeth * module;
+            const pitchRadius = pitchDiameter / 2;
+            const baseRadius = pitchRadius * Math.cos(pressureAngle);
+            const addendum = module;
+            const dedendum = 1.25 * module;
+            const outerRadius = pitchRadius + addendum;
+            const rootRadius = pitchRadius - dedendum;
+            
+            const gearShape = new THREE.Shape();
+            const center = new THREE.Vector2(0, 0);
+            
+            function involutePoint(baseRad, angle) {
+                const x = baseRad * (Math.cos(angle) + angle * Math.sin(angle));
+                const y = baseRad * (Math.sin(angle) - angle * Math.cos(angle));
+                return new THREE.Vector2(x, y);
+            }
+
+            const maxInvoluteAngle = Math.sqrt(outerRadius**2 - baseRadius**2) / baseRadius;
+            const toothAngle = (2 * Math.PI) / numTeeth;
+
+            const toothProfilePoints = [];
+            for (let j = 0; j <= 10; j++) {
+                const t = (j / 10) * maxInvoluteAngle;
+                 if(baseRadius * Math.sqrt(1+t*t) >= rootRadius){
+                    toothProfilePoints.push(involutePoint(baseRadius, t));
+                }
+            }
+             if (toothProfilePoints.length === 0) {
+                 toothProfilePoints.push(new THREE.Vector2(rootRadius, 0));
+                 toothProfilePoints.push(new THREE.Vector2(outerRadius, 0));
+            }
+
+
+            for (let i = 0; i < numTeeth; i++) {
+                const currentAngle = i * toothAngle;
+                
+                const firstSide = toothProfilePoints.map(p => p.clone().rotateAround(center, currentAngle));
+                const secondSide = toothProfilePoints.slice().reverse().map(p => new THREE.Vector2(p.x, -p.y).rotateAround(center, currentAngle + toothAngle));
+
+                if (i === 0) {
+                    gearShape.moveTo(firstSide[0].x, firstSide[0].y);
+                } else {
+                    gearShape.lineTo(firstSide[0].x, firstSide[0].y);
+                }
+
+                firstSide.forEach(p => gearShape.lineTo(p.x, p.y));
+                gearShape.lineTo(secondSide[0].x, secondSide[0].y);
+                secondSide.forEach(p => gearShape.lineTo(p.x, p.y));
+            }
+            gearShape.closePath();
+
+            const holePath = new THREE.Path();
+            if (boreType === 'round' && boreDiameter > 0) {
+                holePath.absarc(0, 0, boreDiameter / 2, 0, Math.PI * 2, true);
+                gearShape.holes.push(holePath);
+            } else if (boreType === 'square') {
+                const halfW = squareBoreWidth / 2;
+                const halfH = squareBoreHeight / 2;
+                holePath.moveTo(-halfW, -halfH);
+                holePath.lineTo(halfW, -halfH);
+                holePath.lineTo(halfW, halfH);
+                holePath.lineTo(-halfW, halfH);
+                holePath.closePath();
+                gearShape.holes.push(holePath);
+            }
+            
+            const extrudeSettings = { depth: faceWidth, bevelEnabled: false, steps: (gearType !== 'spur' ? 20 : 1) };
+            let geometry = new THREE.ExtrudeGeometry(gearShape, extrudeSettings);
+
+            if (gearType === 'helical' || gearType === 'herringbone') {
+                const helixAngleRad = helixAngle * Math.PI / 180;
+                const vertices = geometry.attributes.position.array;
+                const halfWidth = faceWidth / 2;
+
+                for (let i = 0; i < vertices.length; i += 3) {
+                    let x = vertices[i];
+                    let y = vertices[i + 1];
+                    const z = vertices[i + 2];
+                    
+                    let twistAngle;
+                    if(gearType === 'helical'){
+                        twistAngle = (z / faceWidth) * helixAngleRad;
+                    } else { // Herringbone
+                        if (z < halfWidth) {
+                            twistAngle = (z / halfWidth) * (helixAngleRad / 2);
+                        } else {
+                            twistAngle = ((faceWidth - z) / halfWidth) * (helixAngleRad / 2);
+                        }
+                    }
+                    
+                    const rotatedX = x * Math.cos(twistAngle) - y * Math.sin(twistAngle);
+                    const rotatedY = x * Math.sin(twistAngle) + y * Math.cos(twistAngle);
+
+                    vertices[i] = rotatedX;
+                    vertices[i + 1] = rotatedY;
+                }
+                geometry.attributes.position.needsUpdate = true;
+            }
+
+
+            geometry.rotateX(Math.PI / 2);
+            geometry.center();
+            
+            return geometry;
+        }
+
+
+        function updateMesh() {
+            if (currentObject) {
+                scene.remove(currentObject);
+                currentObject.traverse(obj => {
+                    if (obj.isMesh) {
+                        obj.geometry.dispose();
+                        obj.material.dispose();
+                    }
+                });
+            }
+            animationPlaying = false;
+            document.getElementById('animate-toggle').textContent = 'Play';
+
+
+            const numGears = parseInt(document.getElementById('num-gears-selector').value);
+            const module = parseFloat(document.getElementById('gear-module-number').value);
+            const pressureAngle = parseFloat(document.getElementById('gear-pressure-angle-number').value) * Math.PI / 180;
+            const faceWidth = parseFloat(document.getElementById('gear-face-width-number').value);
+            const gearType = document.getElementById('gear-type-selector').value;
+            const helixAngle = parseFloat(document.getElementById('gear-helix-angle-number').value);
+
+            const allGearParams = [];
+
+            for(let i=1; i<=numGears; i++){
+                const params = {
+                    numTeeth: parseInt(document.getElementById(`gear${i}-teeth-number`).value),
+                    module, pressureAngle, faceWidth, gearType, 
+                    helixAngle: (i === 1) ? helixAngle : -helixAngle, // Reverse angle for meshing gears
+                    boreType: document.getElementById(`gear${i}-bore-type-selector`).value,
+                    boreDiameter: parseFloat(document.getElementById(`gear${i}-bore-diameter-number`).value),
+                    squareBoreWidth: parseFloat(document.getElementById(`gear${i}-square-bore-width-number`).value),
+                    squareBoreHeight: parseFloat(document.getElementById(`gear${i}-square-bore-height-number`).value),
+                };
+                allGearParams.push(params);
+            }
+            
+            const partColor = document.getElementById('part-color').value;
+            const material = new THREE.MeshStandardMaterial({ color: partColor, metalness: 0.3, roughness: 0.6 });
+            
+            currentObject = new THREE.Group();
+
+            const gear1Mesh = new THREE.Mesh(createSpurGear(allGearParams[0]), material);
+            gear1Mesh.name = "gear1";
+            currentObject.add(gear1Mesh);
+            
+            const pitchRadius1 = (allGearParams[0].numTeeth * module) / 2;
+
+            if (numGears > 1) {
+                const surroundingGears = numGears - 1;
+                for(let i=1; i<numGears; i++){
+                    const gearMesh = new THREE.Mesh(createSpurGear(allGearParams[i]), material);
+                    gearMesh.name = `gear${i+1}`;
+                    
+                    const pitchRadiusN = (allGearParams[i].numTeeth * module) / 2;
+                    const centerDistance = pitchRadius1 + pitchRadiusN;
+                    
+                    const angle = (i-1) * (2 * Math.PI / surroundingGears);
+                    
+                    gearMesh.position.x = centerDistance * Math.cos(angle);
+                    gearMesh.position.z = centerDistance * Math.sin(angle);
+
+                    currentObject.add(gearMesh);
+                }
+            }
+
+
+            const box = new THREE.Box3().setFromObject(currentObject);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            currentObject.position.sub(center);
+            currentObject.position.y += faceWidth/2;
+
+            scene.add(currentObject);
+        }
+        
+        function setupEventListeners() {
+            const syncInputs = (sliderId, numberId) => {
+                const slider = document.getElementById(sliderId);
+                const number = document.getElementById(numberId);
+                slider.addEventListener('input', () => { number.value = slider.value; updateMesh(); });
+                number.addEventListener('input', () => { slider.value = number.value; updateMesh(); });
+            };
+            
+            // Shared
+            syncInputs('gear-module-slider', 'gear-module-number');
+            syncInputs('gear-pressure-angle-slider', 'gear-pressure-angle-number');
+            syncInputs('gear-face-width-slider', 'gear-face-width-number');
+            syncInputs('gear-helix-angle-slider', 'gear-helix-angle-number');
+
+            // Gears
+            for(let i=1; i<=6; i++){
+                if(document.getElementById(`gear${i}-teeth-slider`)){
+                    syncInputs(`gear${i}-teeth-slider`, `gear${i}-teeth-number`);
+                    syncInputs(`gear${i}-bore-diameter-slider`, `gear${i}-bore-diameter-number`);
+                    syncInputs(`gear${i}-square-bore-width-slider`, `gear${i}-square-bore-width-number`);
+                    syncInputs(`gear${i}-square-bore-height-slider`, `gear${i}-square-bore-height-number`);
+                }
+            }
+
+
+            document.getElementById('num-gears-selector').addEventListener('change', (e) => {
+                const numGears = parseInt(e.target.value);
+                for(let i=2; i<=6; i++){
+                     document.getElementById(`gear${i}-params`).classList.toggle('hidden', i > numGears);
+                }
+                updateMesh();
+            });
+
+            document.getElementById('gear-type-selector').addEventListener('change', (e) => {
+                document.getElementById('gear-helix-params').classList.toggle('hidden', e.target.value === 'spur');
+                updateMesh();
+            });
+
+            for(let i=1; i<=6; i++){
+                 if(document.getElementById(`gear${i}-bore-type-selector`)){
+                    document.getElementById(`gear${i}-bore-type-selector`).addEventListener('change', (e) => {
+                        const roundParams = document.getElementById(`gear${i}-bore-round-params`);
+                        const squareParams = document.getElementById(`gear${i}-bore-square-params`);
+                        if (e.target.value === 'round') {
+                            roundParams.style.display = 'block';
+                            squareParams.style.display = 'none';
+                        } else {
+                            roundParams.style.display = 'none';
+                            squareParams.style.display = 'block';
+                        }
+                        updateMesh();
+                    });
+                 }
+            }
+            
+            document.getElementById('part-color').addEventListener('input', (e) => { 
+                if (currentObject) {
+                    currentObject.traverse(child => {
+                        if (child.isMesh) {
+                            child.material.color.set(e.target.value);
+                        }
+                    });
+                }
+            });
+            document.getElementById('grid-toggle').addEventListener('change', (e) => { if(gridHelper) gridHelper.visible = e.target.checked; });
+            
+            document.getElementById('animate-toggle').addEventListener('click', (e) => {
+                animationPlaying = !animationPlaying;
+                e.target.textContent = animationPlaying ? 'Pause' : 'Play';
+            });
+
+            document.getElementById('export-assembly').addEventListener('click', () => {
+                if (!currentObject) return;
+                const exporter = new STLExporter();
+                const result = exporter.parse(currentObject, { binary: true });
+                const blob = new Blob([result], { type: 'application/sla' });
+                const link = document.createElement('a');
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.href = URL.createObjectURL(blob);
+                link.download = `spur_gear_assembly.stl`;
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            document.getElementById('export-individual').addEventListener('click', () => {
+                if (!currentObject || !currentObject.isGroup) return;
+                const exporter = new STLExporter();
+
+                currentObject.children.forEach((mesh, index) => {
+                    const singleGearScene = new THREE.Scene();
+                    const gearClone = mesh.clone();
+                    gearClone.position.set(0,0,0); // Center the gear
+                    singleGearScene.add(gearClone);
+                    const result = exporter.parse(singleGearScene, { binary: true });
+                    const blob = new Blob([result], { type: 'application/sla' });
+                    const link = document.createElement('a');
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `gear_${index + 1}.stl`;
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            setupEventListeners();
+            updateMesh(); 
+        });
+    </script>
+</body>
+</html>
+
